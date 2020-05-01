@@ -1,0 +1,4 @@
+// Calcul du prix total
+forfait := 100
+total := prix_unitaire * 20 + forfait
+message := "Le prix est " + total
