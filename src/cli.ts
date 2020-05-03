@@ -1,6 +1,7 @@
 
 import * as fs from 'fs';
 import { Lexer, TokenKind } from './lexer';
+import { Parser } from './parser';
 
 // skip unecessary arguments
 const [, , ...args] = process.argv;
@@ -14,11 +15,7 @@ const inputFilename = args[0];
 fs.readFile(inputFilename, 'utf8', (err, data) => {
     if (err) throw err;
     const lexer = new Lexer(data);
-    while (true) {
-        let token = lexer.nextToken();
-        if (token.kind == TokenKind.EOF) {
-	    break;
-        }
-      console.log(token);
-    }
+    const parser = new Parser(lexer);
+    const file = parser.parseFile();
+    console.log(JSON.stringify(file, null, 2));
 });
