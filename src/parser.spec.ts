@@ -3,19 +3,22 @@ import { expect } from 'chai';
 
 import { Parser } from './parser';
 import { Lexer } from './lexer';
+import { TestErrorReporter } from './code-utils';
 
 describe("Parser Tests", function() {
 
     it("parse empty file", function() {
+        const reporter = new TestErrorReporter();
         const content = "";
-        const parser = new Parser(new Lexer(content));
+        const parser = new Parser(new Lexer(content, reporter));
         const result = parser.parseFile();
         expect(result).to.eql({ assignments: [] });
     });
 
     it("parse single assignment", function() {
+        const reporter = new TestErrorReporter();
         const content = "my_var := 10";
-        const parser = new Parser(new Lexer(content));
+        const parser = new Parser(new Lexer(content, reporter));
         const result = parser.parseFile();
         expect(result).to.eql({ assignments: [
             { variable: { value: "my_var" }, value: { type: 'integer', value: 10 } }
@@ -23,8 +26,9 @@ describe("Parser Tests", function() {
     });
 
     it("parse multiple assignments", function() {
+        const reporter = new TestErrorReporter();
         const content = 'my_var := 10 my_other_var := "hello"';
-        const parser = new Parser(new Lexer(content));
+        const parser = new Parser(new Lexer(content, reporter));
         const result = parser.parseFile();
         expect(result).to.eql({ assignments: [
             { variable: { value: "my_var" }, value: { type: 'integer', value: 10 } },
@@ -33,8 +37,9 @@ describe("Parser Tests", function() {
     });
 
     it("parse complex value", function() {
+        const reporter = new TestErrorReporter();
         const content = 'my_var := 10 + my_other_var';
-        const parser = new Parser(new Lexer(content));
+        const parser = new Parser(new Lexer(content, reporter));
         const result = parser.parseFile();
         expect(result).to.eql({ assignments: [
             {
@@ -50,8 +55,9 @@ describe("Parser Tests", function() {
     });
 
     it("parse complex value with priority", function() {
+        const reporter = new TestErrorReporter();
         const content = 'my_var := 10 + my_other_var * 30';
-        const parser = new Parser(new Lexer(content));
+        const parser = new Parser(new Lexer(content, reporter));
         const result = parser.parseFile();
         expect(result).to.eql({ assignments: [
             {
@@ -72,8 +78,9 @@ describe("Parser Tests", function() {
     });
 
     it("parse same priority from left to right", function() {
+        const reporter = new TestErrorReporter();
         const content = 'my_var := 10 + foo - my_other_var * 30 / bar';
-        const parser = new Parser(new Lexer(content));
+        const parser = new Parser(new Lexer(content, reporter));
         const result = parser.parseFile();
         expect(result).to.eql({ assignments: [
             {

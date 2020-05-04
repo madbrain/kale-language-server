@@ -25,7 +25,10 @@ class ConsoleErrorReporter implements ErrorReporter {
                 .filter(error => error.span.from.line == i)
                 .forEach(error => {
                     let marker = this.repeat(' ', error.span.from.character);
-                    marker += this.repeat('^', error.span.to.character - error.span.from.character);
+                    const end = error.span.from.line == error.span.to.line
+                        ? error.span.to.character
+                        : line.length;
+                    marker += this.repeat('^', end - error.span.from.character);
                     console.log(line);
                     console.log(marker);
                     console.log(`[${i}] ${error.message}`);
@@ -45,7 +48,7 @@ class ConsoleErrorReporter implements ErrorReporter {
 fs.readFile(inputFilename, 'utf8', (err, data) => {
     if (err) throw err;
     const reporter = new ConsoleErrorReporter();
-    const lexer = new Lexer(data);
+    const lexer = new Lexer(data, reporter);
     const parser = new Parser(lexer);
     const result = parser.parseFile();
     if (reporter.errors.length > 0) {
