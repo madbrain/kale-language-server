@@ -5,9 +5,11 @@ import { Parser } from './parser';
 import { Lexer } from './lexer';
 import { KaleFile } from './ast';
 import { evaluate } from './interpreter';
+import { TestErrorReporter } from './code-utils';
 
 function getResult(content: string): KaleFile {
-    return new Parser(new Lexer(content)).parseFile();
+    const reporter = new TestErrorReporter();
+    return new Parser(new Lexer(content, reporter)).parseFile();
 }
 
 describe("Interpreter Tests", function() {
