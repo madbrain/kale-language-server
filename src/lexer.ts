@@ -1,4 +1,4 @@
-import { Span, Position } from "./positions";
+import { Span, Position, ErrorReporter } from "./positions";
 
 export enum TokenKind {
     IDENT = "IDENT",
@@ -27,8 +27,9 @@ export class Lexer {
     private character = 0;
     private lastEndOfLine = -1;
     private from = this.makePosition();
+    private errorSpan: Span | null = null;
 
-    constructor(private content: string) { }
+    constructor(private content: string, private reporter: ErrorReporter) { }
 
     nextToken(): Token {
         while (true) {
@@ -64,7 +65,22 @@ export class Lexer {
             } else if (this.isSpace(c)) {
                 continue;
             }
-            throw Error(`Unexpected char '${c}'`); // KEEP
+            this.accumulateBadChar();
+        }
+    }
+
+    private accumulateBadChar() {
+        if (this.errorSpan == null) {
+            this.errorSpan = { from: this.from, to: this.makePosition() };
+        } else {
+            this.errorSpan = {...this.errorSpan, to: this.makePosition() };
+        }
+    }
+
+    private flushErrors() {
+        if (this.errorSpan != null) {
+            this.reporter.reportError(this.errorSpan, "Unknown character(s)");
+            this.errorSpan = null;
         }
     }
 
@@ -73,6 +89,7 @@ export class Lexer {
     }
 
     private token(kind: TokenKind, value?: string): Token {
+        this.flushErrors();
         if (value) {
             return { span: { from: this.from, to: this.makePosition() }, kind, value };
         }
@@ -109,7 +126,8 @@ export class Lexer {
         let result = "";
         while (true) {
             if (this.atEnd()) {
-                throw Error("Unterminated string");
+                this.reporter.reportError({ from: this.from, to: this.makePosition() }, "Unterminated string")
+                break;
             }
             const c = this.getChar();
             if (c == "\"") {
