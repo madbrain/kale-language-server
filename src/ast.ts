@@ -9,7 +9,11 @@ export interface KaleFile extends AstNode {
 }
 
 export interface Assignment extends AstNode {
+    isOk: boolean;
     variable: Ident;
+}
+
+export interface CompleteAssignment extends Assignment {
     value: Value;
 }
 
@@ -40,6 +44,7 @@ export enum OperationType {
 }
 
 export interface Operation extends Value {
+    isOk: boolean;
     op: OperationType;
 }
 
@@ -50,4 +55,8 @@ export interface UnaryOperation extends Operation {
 export interface BinaryOperation extends Operation {
     left: Value;
     right: Value;
+}
+
+export interface BadBinaryOperation extends Operation {
+    left: Value;
 }

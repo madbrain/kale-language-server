@@ -9,7 +9,7 @@ import { TestErrorReporter } from './code-utils';
 
 function getResult(content: string): KaleFile {
     const reporter = new TestErrorReporter();
-    return new Parser(new Lexer(content, reporter)).parseFile();
+    return new Parser(new Lexer(content, reporter), reporter).parseFile();
 }
 
 describe("Interpreter Tests", function() {
