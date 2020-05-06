@@ -1,5 +1,6 @@
 import { Lexer, Token, TokenKind } from "./lexer";
 import { KaleFile, Assignment, Ident, ValueType, OperationType, Value } from "./ast";
+import { mergeSpan } from "./positions";
 
 export class Parser {
     private token: Token;
@@ -9,36 +10,38 @@ export class Parser {
     }
 
     parseFile(): KaleFile {
+        const start = this.token.span;
         const assignments: Assignment[] = [];
         while (! this.test(TokenKind.EOF)) {
             assignments.push(this.parseAssignment());
         }
+        const end = this.token.span;
         this.expect(TokenKind.EOF);
-        return { assignments };
+        return { span: mergeSpan(start, end), assignments };
     }
 
     private parseAssignment(): Assignment {
         const variable = this.parseIdent();
         this.expect(TokenKind.ASSIGN);
         const value = this.parseValue();
-        return { variable, value };
+        return { span: mergeSpan(variable.span, value.span), variable, value };
     }
 
     private parseIdent(): Ident {
-        const value = this.token.value;
+        const current = this.token;
         this.expect(TokenKind.IDENT);
-        return { value: value! };
+        return { span: current.span, value: current.value! };
     }
 
-    private parseValue() {
+    private parseValue(): Value {
         let expr: Value = this.parseMulDivValue();
         while (true) {
             if (this.test(TokenKind.ADD)) {
                 const right = this.parseMulDivValue();
-                expr = <Value>{ type: ValueType.OPERATION, op: OperationType.ADD, left: expr, right };
+                expr = <Value>{ span: mergeSpan(expr.span, right.span), type: ValueType.OPERATION, op: OperationType.ADD, left: expr, right };
             } else if (this.test(TokenKind.SUBSTRACT)) {
                 const right = this.parseMulDivValue();
-                expr = <Value>{ type: ValueType.OPERATION, op: OperationType.SUBSTRACT, left: expr, right };
+                expr = <Value>{ span: mergeSpan(expr.span, right.span), type: ValueType.OPERATION, op: OperationType.SUBSTRACT, left: expr, right };
             } else {
                 break;
             }
@@ -46,15 +49,15 @@ export class Parser {
         return expr;
     }
 
-    private parseMulDivValue() {
+    private parseMulDivValue(): Value {
         let expr: Value = this.parseAtomValue();
         while (true) {
             if (this.test(TokenKind.MULTIPLY)) {
                 const right = this.parseAtomValue();
-                expr = <Value>{ type: ValueType.OPERATION, op: OperationType.MULTIPLY, left: expr, right };
+                expr = <Value>{ span: mergeSpan(expr.span, right.span), type: ValueType.OPERATION, op: OperationType.MULTIPLY, left: expr, right };
             } else if (this.test(TokenKind.DIVIDE)) {
                 const right = this.parseAtomValue();
-                expr = <Value>{ type: ValueType.OPERATION, op: OperationType.DIVIDE, left: expr, right };
+                expr = <Value>{ span: mergeSpan(expr.span, right.span), type: ValueType.OPERATION, op: OperationType.DIVIDE, left: expr, right };
             } else {
                 break;
             }
@@ -62,16 +65,16 @@ export class Parser {
         return expr;
     }
 
-    private parseAtomValue() {
-        const value = this.token.value;
+    private parseAtomValue(): Value {
+        const current = this.token;
         if (this.test(TokenKind.INTEGER)) {
-            return { type: ValueType.INTEGER, value: parseInt(value!) };
+            return <Value>{ span: current.span, type: ValueType.INTEGER, value: parseInt(current.value!) };
         }
         if (this.test(TokenKind.IDENT)) {
-            return { type: ValueType.VARIABLE, value: value! };
+            return <Value>{ span: current.span, type: ValueType.VARIABLE, value: current.value! };
         }
         this.expect(TokenKind.STRING);
-        return { type: ValueType.STRING, value: value! };
+        return <Value>{ span: current.span, type: ValueType.STRING, value: current.value! };
     }
 
     private scanToken() {
