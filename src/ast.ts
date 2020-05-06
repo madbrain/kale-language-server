@@ -1,5 +1,7 @@
+import { Span } from "./positions";
 
 export interface AstNode {
+    span: Span;
 }
 
 export interface KaleFile extends AstNode {
