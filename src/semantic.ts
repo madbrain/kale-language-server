@@ -1,7 +1,7 @@
 import { ErrorReporter, Span } from "./positions";
-import { KaleFile } from "./ast";
+import { KaleFile, Value, ValueType, SimpleValue, BinaryOperation, OperationType, CompleteAssignment, Assignment } from "./ast";
 
-export enum Type {
+enum Type {
     INTEGER,
     STRING,
     UNKNOWN,
@@ -9,5 +9,77 @@ export enum Type {
 
 export function checkSemantic(file: KaleFile, reporter: ErrorReporter) {
     const variables = new Map<string, Type>();
-    throw new Error("TODO : complete");
+    let lastSpan : Span = file.span;
+    file.assignments.forEach(assignment => {
+        lastSpan = assignment.span;
+        if (assignment.isOk) {
+            const assign = <CompleteAssignment>assignment;
+            variables.set(assign.variable.value, checkValue(assign.value, variables, reporter));
+        } else {
+            variables.set((<Assignment>assignment).variable.value, Type.UNKNOWN);
+        }
+    });
+    if (! variables.has('message')) {
+        reporter.reportError(lastSpan, "Missing 'message' variable")
+    }
+}
+
+function checkValue(value: Value, variables: Map<string, Type>, reporter: ErrorReporter): Type {
+    if (value.type == ValueType.INTEGER) {
+        return Type.INTEGER;
+    }
+    if (value.type == ValueType.STRING) {
+        return Type.STRING;
+    }
+    if (value.type == ValueType.VARIABLE) {
+        const name = (<SimpleValue>value).value;
+        if (variables.has(name)) {
+            return variables.get(name)!;
+        }
+        reporter.reportError(value.span, `Unknown variable '${name}'`);
+        return Type.UNKNOWN;
+    }
+    const operation = <BinaryOperation>value;
+    switch(operation.op) {
+        case OperationType.ADD:
+            const lt = checkValue(operation.left, variables, reporter);
+            if (! operation.isOk) {
+                return Type.UNKNOWN;
+            }
+            return combine(lt, checkValue(operation.right, variables, reporter));
+        case OperationType.SUBSTRACT:
+            return checkIntegerOperation(operation, '-', variables, reporter);
+        case OperationType.MULTIPLY:
+            return checkIntegerOperation(operation, '*', variables, reporter);
+        case OperationType.DIVIDE:
+            return checkIntegerOperation(operation, '/', variables, reporter);
+    }
+    return Type.UNKNOWN;
+}
+
+function checkIntegerOperation(operation: BinaryOperation, op: string, variables: Map<string, Type>, reporter: ErrorReporter) {
+    const lt = checkValue(operation.left, variables, reporter);
+    if (!operation.isOk) {
+        return Type.UNKNOWN;
+    }
+    const rt = checkValue(operation.right, variables, reporter);
+    if (hasUnknown(lt, rt)) {
+        return Type.UNKNOWN;
+    }
+    if (lt != Type.INTEGER || rt != Type.INTEGER) {
+        reporter.reportError(operation.span, `Cannot use '${op}' on strings`);
+        return Type.UNKNOWN;
+    }
+    return Type.INTEGER;
+}
+
+function combine(a: Type, b: Type) {
+    if (hasUnknown(a, b)) {
+        return Type.UNKNOWN;
+    }
+    return a == Type.STRING || b == Type.STRING ? Type.STRING : Type.INTEGER;
+}
+
+function hasUnknown(a: Type, b: Type) {
+    return a == Type.UNKNOWN || b == Type.UNKNOWN;
 }
