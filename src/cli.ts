@@ -2,6 +2,7 @@
 import * as fs from 'fs';
 import { Lexer } from './lexer';
 import { Parser } from './parser';
+import { checkSemantic } from './semantic';
 import { evaluate } from './interpreter';
 import { ErrorReporter, Span } from './positions';
 
@@ -51,6 +52,7 @@ fs.readFile(inputFilename, 'utf8', (err, data) => {
     const lexer = new Lexer(data, reporter);
     const parser = new Parser(lexer, reporter);
     const result = parser.parseFile();
+    checkSemantic(result, reporter);
     if (reporter.errors.length > 0) {
         reporter.reportAll(data);
     } else {
