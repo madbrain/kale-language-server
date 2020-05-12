@@ -1,10 +1,25 @@
 import { Position, Span, ErrorReporter } from "./positions";
+import { Range } from "vscode-languageserver";
 
 export class Code {
     constructor(public value: string, public positions: Position[]) { }
 
     span(from: number, to: number): Span {
         return { from: this.positions[from], to: this.positions[to] };
+    }
+
+    toPosition(n: number) {
+        return {
+            line: this.positions[n].line,
+            character: this.positions[n].character
+        };
+    }
+
+    range(from: number, to: number): Range {
+        return {
+            start: this.toPosition(from),
+            end: this.toPosition(to)
+        };
     }
 }
 
@@ -47,7 +62,6 @@ export interface Error {
 
 export class TestErrorReporter implements ErrorReporter {
     errors: Error[] = [];
-
     reportError(span: Span, message: string): void {
         this.errors.push({ span, message });
     }
