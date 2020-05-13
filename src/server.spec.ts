@@ -1,0 +1,122 @@
+
+import * as child_process from "child_process";
+import { expect } from 'chai';
+
+import { code } from './code-utils';
+
+import {
+    TextDocumentSyncKind, MarkupKind
+} from 'vscode-languageserver';
+
+const lspProcess = child_process.fork("lib/server.js", [ "--node-ipc" ]);
+let messageId = 1;
+
+function sendRequest(method: string, params: any): number {
+	const message = {
+		jsonrpc: "2.0",
+		id: messageId++,
+		method: method,
+		params: params
+	};
+	lspProcess.send(message);
+	return messageId - 1;
+}
+
+function sendNotification(method: string, params: any) {
+	const message = {
+		jsonrpc: "2.0",
+		method: method,
+		params: params
+	};
+	lspProcess.send(message);
+}
+
+function initialize(): number {
+	const capabilities = {
+		workspace: { }
+	};
+	return sendRequest("initialize", {
+		rootPath: process.cwd(),
+		processId: process.pid,
+		capabilities
+	});
+}
+
+describe("Server Tests", function() {
+
+    it("initialize", function(finished) {
+		this.timeout(5000);
+		const responseId = initialize();
+		lspProcess.once('message', function (json) {
+			const capabilities = json.result.capabilities;
+			
+			expect(json.id).to.equal(responseId);
+			expect(capabilities.textDocumentSync).to.equal(TextDocumentSyncKind.Incremental);
+			
+			finished();
+		});
+	});
+
+	it("open document and publish diagnostics", function (finished) {
+		this.timeout(5000);
+		const uri = "uri://example1.kl";
+		const content = code("message := @{1}foo@{2}");
+		sendNotification("textDocument/didOpen", {
+			textDocument: {
+				languageId: "kale",
+				version: 1,
+				uri: uri,
+				text: content.value
+			}
+		});
+
+		lspProcess.once("message", (json) => {
+			
+			if (json.method === "textDocument/publishDiagnostics") {
+				expect(json.params).to.eql({
+					uri: uri,
+					diagnostics: [
+						{
+							severity: 1,
+							message: "Unknown variable 'foo'",
+							range: content.range(1, 2)
+						}
+					]
+				});
+				
+				sendNotification("textDocument/didChange", {
+					textDocument: {
+						version: 2,
+						uri: uri,
+					},
+					contentChanges: [
+						{
+							range: content.range(1, 2),
+							rangeLength: 3,
+							text: "10"
+						}
+					]
+				});
+				lspProcess.once("message", (json) => {
+					if (json.method === "textDocument/publishDiagnostics") {
+						expect(json.params).to.eql({
+							uri: uri,
+							diagnostics: [ ]
+						});
+						sendNotification("textDocument/didClose", {
+							textDocument: {
+								uri: uri
+							}
+						});
+						finished();
+					}
+				});
+			}
+		});
+	});
+
+	after(() => {
+		// terminate the forked LSP process after all the tests have been run
+		lspProcess.kill();
+	});
+});

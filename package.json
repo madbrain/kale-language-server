@@ -5,16 +5,18 @@
   "author": "Ludovic L'Hours",
   "license": "ISC",
   "bin": {
-    "kale-interpreter": "./bin/kale-interpreter"
+    "kale-interpreter": "./bin/kale-interpreter",
+    "kale-langserver": "./bin/kale-langserver"
   },
+  "main": "lib/server.js",
   "scripts": {
     "build": "tsc --project .",
     "watch": "tsc --watch --project .",
-    "prepublish": "npm run compile",
-    "test": "mocha"
+    "prepublish": "npm run build",
+    "test": "npm run build && mocha"
   },
   "dependencies": {
-    "typescript": "^3.4.5"
+    "vscode-languageserver": "^6.1.1"
   },
   "devDependencies": {
     "@types/chai": "^4.2.11",
@@ -22,6 +24,7 @@
     "@types/node": "^12.0.2",
     "chai": "^4.2.0",
     "mocha": "^7.1.1",
-    "ts-node": "^8.8.2"
+    "ts-node": "^8.8.2",
+    "typescript": "^3.8.3"
   }
 }
