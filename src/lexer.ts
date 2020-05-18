@@ -2,6 +2,7 @@ import { Span, Position, ErrorReporter } from "./positions";
 
 export enum TokenKind {
     IDENT = "IDENT",
+    START_IDENT = "START_IDENT",
     INTEGER = "INTEGER",
     STRING = "STRING",
 
@@ -26,6 +27,7 @@ export class Lexer {
     private line = 0;
     private character = 0;
     private lastEndOfLine = -1;
+    private atStartOfLine = true;
     private from = this.makePosition();
     private errorSpan: Span | null = null;
 
@@ -39,6 +41,7 @@ export class Lexer {
             }
             const c = this.getChar();
             if (this.isLetter(c)) {
+                // TODO check if spaces infront
                 return this.ident(c);
             } else if (this.isDigit(c)) {
                 return this.integer(c);
@@ -48,7 +51,7 @@ export class Lexer {
                 if (this.getChar() == '=') {
                     return this.token(TokenKind.ASSIGN);
                 }
-                this.ungetChar()
+                this.ungetChar();
             } else if (c == '+') {
                 return this.token(TokenKind.ADD);
             } else if (c == '-') {
@@ -90,6 +93,7 @@ export class Lexer {
 
     private token(kind: TokenKind, value?: string): Token {
         this.flushErrors();
+        this.atStartOfLine = false;
         if (value) {
             return { span: { from: this.from, to: this.makePosition() }, kind, value };
         }
@@ -106,7 +110,7 @@ export class Lexer {
             result += c;
         }
         this.ungetChar();
-        return this.token(TokenKind.IDENT, result);
+        return this.token(this.atStartOfLine ? TokenKind.START_IDENT : TokenKind.IDENT, result);
     }
 
     private integer(c: string): Token {
@@ -175,6 +179,7 @@ export class Lexer {
             this.line += 1;
             this.lastEndOfLine = this.character-1;
             this.character = 0;
+            this.atStartOfLine = true;
         }
         return c;
     }
@@ -185,6 +190,7 @@ export class Lexer {
         if (this.content[this.position] == '\n') {
             this.line -= 1;
             this.character = this.lastEndOfLine;
+            this.atStartOfLine = false;
         }
     }
 

@@ -18,7 +18,7 @@ export class Parser {
         const start = this.token.span;
         const assignments: Assignment[] = [];
         while (! this.test(TokenKind.EOF)) {
-            this.recoverWith([TokenKind.IDENT, TokenKind.EOF ], start, (endSpan) => {
+            this.recoverWith([TokenKind.START_IDENT, TokenKind.EOF ], start, (endSpan) => {
                 // ignore
             }, () => {
                 assignments.push(this.parseAssignment());
@@ -32,13 +32,13 @@ export class Parser {
     /**
      * Assignment ::= Ident ASSIGN Value
      * 
-     * First(Assignment) = First(Ident) = { IDENT }
-     * Follow(Assignment) = { EOF } + First(Assignment) = { IDENT, EOF }
+     * First(Assignment) = First(Ident) = { START_IDENT }
+     * Follow(Assignment) = { EOF } + First(Assignment) = { START_IDENT, EOF }
      * 
      */
     private parseAssignment(): Assignment {
-        const variable = this.parseIdent();
-        return this.recoverWith([ TokenKind.IDENT, TokenKind.EOF], variable.span, (endSpan) => {
+        const variable = this.parseStartIdent();
+        return this.recoverWith([ TokenKind.START_IDENT, TokenKind.EOF], variable.span, (endSpan) => {
             return <Assignment>{ span: mergeSpan(variable.span, endSpan), isOk: false, variable };
         }, () => {
             this.expect(TokenKind.ASSIGN);
@@ -48,14 +48,14 @@ export class Parser {
     }
 
     /**
-     * Ident ::= IDENT
+     * Ident ::= START_IDENT
      * 
-     * First(Ident) = { IDENT }
+     * First(Ident) = { START_IDENT }
      * Follow(Ident) = { ASSIGN } + Follow(AtomValue)
      */
-    private parseIdent(): Ident {
+    private parseStartIdent(): Ident {
         const current = this.token;
-        this.expect(TokenKind.IDENT);
+        this.expect(TokenKind.START_IDENT);
         return { span: current.span, value: current.value! };
     }
 
@@ -63,10 +63,10 @@ export class Parser {
      * Value ::= MulDivValue ( ((ADD | SUBSTRACT) MulDivValue)* | <empty> )
      * 
      * First(Value) = First(MulDivValue) = { INTEGER, IDENT, STRING }
-     * Follow(Value) = Follow(Assignment) = { IDENT, EOF }
+     * Follow(Value) = Follow(Assignment) = { START_IDENT, EOF }
      */
     private parseValue(): Value {
-        const SYNC_MUL_DIV_VALUE = [ TokenKind.ADD, TokenKind.SUBSTRACT, TokenKind.IDENT, TokenKind.EOF ];
+        const SYNC_MUL_DIV_VALUE = [ TokenKind.ADD, TokenKind.SUBSTRACT, TokenKind.START_IDENT, TokenKind.EOF ];
         const startSpan = this.token.span;
         let expr: Value = this.parseMulDivValue();
         while (true) {
@@ -85,10 +85,10 @@ export class Parser {
      * MulDivValue ::= AtomValue ( ((MULTIPLY | DIVIDE) AtomValue)* | <empty> )
      * 
      * First(MulDivValue) = First(AtomValue) = { INTEGER, IDENT, STRING }
-     * Follow(MulDivValue) = { ADD, SUBSTRACT } + Follow(Value) = { ADD, SUBSTRACT, IDENT, EOF }
+     * Follow(MulDivValue) = { ADD, SUBSTRACT } + Follow(Value) = { ADD, SUBSTRACT, START_IDENT, EOF }
      */
     private parseMulDivValue(): Value {
-        const SYNC_ATOM_VALUE = [ TokenKind.ADD, TokenKind.SUBSTRACT, TokenKind.MULTIPLY, TokenKind.DIVIDE, TokenKind.IDENT, TokenKind.EOF ];
+        const SYNC_ATOM_VALUE = [ TokenKind.ADD, TokenKind.SUBSTRACT, TokenKind.MULTIPLY, TokenKind.DIVIDE, TokenKind.START_IDENT, TokenKind.EOF ];
         const startSpan = this.token.span;
         let expr: Value = this.parseAtomValue();
         while (true) {
@@ -116,7 +116,7 @@ export class Parser {
      * AtomValue ::= INTEGER | IDENT | STRING
      * 
      * First(AtomValue) = { INTEGER, IDENT, STRING }
-     * Follow(AtomValue) = { MULTIPLY, DIVIDE } + Follow(MulDivValue) = { ADD, SUBSTRACT, MULTIPLY, DIVIDE, IDENT, EOF }
+     * Follow(AtomValue) = { MULTIPLY, DIVIDE } + Follow(MulDivValue) = { ADD, SUBSTRACT, MULTIPLY, DIVIDE, START_IDENT, EOF }
      */
     private parseAtomValue(): Value {
         const current = this.token;
