@@ -14,11 +14,12 @@ describe("Lexer Tests", function() {
         expect(reporter.errors).to.empty;
     });
 
-    it("scan identifier", function() {
+    it("scan identifiers", function() {
         const reporter = new TestErrorReporter();
-        const content = code("@{1}hello@{2}");
+        const content = code("  @{1}hello@{2} @{3}hello@{4}");
         const lexer = new Lexer(content.value, reporter);
-        expect(lexer.nextToken()).to.eql({ span: content.span(1, 2), kind: TokenKind.IDENT, value: "hello" });
+        expect(lexer.nextToken()).to.eql({ span: content.span(1, 2), kind: TokenKind.START_IDENT, value: "hello" });
+        expect(lexer.nextToken()).to.eql({ span: content.span(3, 4), kind: TokenKind.IDENT, value: "hello" });
         expect(reporter.errors).to.empty;
     });
 
@@ -26,7 +27,7 @@ describe("Lexer Tests", function() {
         const reporter = new TestErrorReporter();
         const content = code("@{1}hello_256@{2}");
         const lexer = new Lexer(content.value, reporter);
-        expect(lexer.nextToken()).to.eql({ span: content.span(1, 2), kind: TokenKind.IDENT, value: "hello_256" });
+        expect(lexer.nextToken()).to.eql({ span: content.span(1, 2), kind: TokenKind.START_IDENT, value: "hello_256" });
         expect(reporter.errors).to.empty;
     });
 
@@ -34,17 +35,17 @@ describe("Lexer Tests", function() {
         const reporter = new TestErrorReporter();
         const content = code(" @{1}hello@{2} @{3}256@{4}\n\t@{5}world@{6}");
         const lexer = new Lexer(content.value, reporter);
-		expect(lexer.nextToken()).to.eql({ span: content.span(1, 2), kind: TokenKind.IDENT, value: "hello" });
+		expect(lexer.nextToken()).to.eql({ span: content.span(1, 2), kind: TokenKind.START_IDENT, value: "hello" });
 		expect(lexer.nextToken()).to.eql({ span: content.span(3, 4), kind: TokenKind.INTEGER, value: "256" });
-        expect(lexer.nextToken()).to.eql({ span: content.span(5, 6), kind: TokenKind.IDENT, value: "world" });
+        expect(lexer.nextToken()).to.eql({ span: content.span(5, 6), kind: TokenKind.START_IDENT, value: "world" });
         expect(reporter.errors).to.empty;
     });
 
     it("end of stream is token EOF", function() {
         const reporter = new TestErrorReporter();
         const content = code("@{1}hello@{2} @{3}256@{4}");
-        const lexer = new Lexer(content.value, reporter);
-		expect(lexer.nextToken()).to.eql({ span: content.span(1, 2), kind: TokenKind.IDENT, value: "hello" });
+        const lexer = new Lexer("hello 256", reporter);
+		expect(lexer.nextToken()).to.eql({ span: content.span(1, 2), kind: TokenKind.START_IDENT, value: "hello" });
 		expect(lexer.nextToken()).to.eql({ span: content.span(3, 4), kind: TokenKind.INTEGER, value: "256" });
 		expect(lexer.nextToken()).to.eql({ span: content.span(4, 4), kind: TokenKind.EOF });
         expect(lexer.nextToken()).to.eql({ span: content.span(4, 4), kind: TokenKind.EOF });
@@ -84,7 +85,7 @@ describe("Lexer Tests", function() {
         const reporter = new TestErrorReporter();
         const content = code("@{1}hello@{2}// comment to end of line\n@{3}256@{4}");
         const lexer = new Lexer(content.value, reporter);
-		expect(lexer.nextToken()).to.eql({ span: content.span(1, 2), kind: TokenKind.IDENT, value: "hello" });
+		expect(lexer.nextToken()).to.eql({ span: content.span(1, 2), kind: TokenKind.START_IDENT, value: "hello" });
 		expect(lexer.nextToken()).to.eql({ span: content.span(3, 4), kind: TokenKind.INTEGER, value: "256" });
         expect(lexer.nextToken()).to.eql({ span: content.span(4, 4), kind: TokenKind.EOF });
         expect(reporter.errors).to.empty;
