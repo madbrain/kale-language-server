@@ -1,7 +1,7 @@
 import { ErrorReporter, Span } from "./positions";
 import { KaleFile, Value, ValueType, SimpleValue, BinaryOperation, OperationType, CompleteAssignment, Assignment } from "./ast";
 
-enum Type {
+export enum Type {
     INTEGER,
     STRING,
     UNKNOWN,
@@ -11,17 +11,21 @@ export function checkSemantic(file: KaleFile, reporter: ErrorReporter) {
     const variables = new Map<string, Type>();
     let lastSpan : Span = file.span;
     file.assignments.forEach(assignment => {
-        lastSpan = assignment.span;
-        if (assignment.isOk) {
-            const assign = <CompleteAssignment>assignment;
-            variables.set(assign.variable.value, checkValue(assign.value, variables, reporter));
-        } else {
-            variables.set((<Assignment>assignment).variable.value, Type.UNKNOWN);
-        }
+        lastSpan = checkAssignment(assignment, variables, reporter);
     });
     if (! variables.has('message')) {
         reporter.reportError(lastSpan, "Missing 'message' variable")
     }
+}
+
+export function checkAssignment(assignment: Assignment, variables: Map<string, Type>, reporter: ErrorReporter) {
+    if (assignment.isOk) {
+        const assign = <CompleteAssignment>assignment;
+        variables.set(assign.variable.value, checkValue(assign.value, variables, reporter));
+    } else {
+        variables.set((<Assignment>assignment).variable.value, Type.UNKNOWN);
+    }
+    return assignment.span;
 }
 
 function checkValue(value: Value, variables: Map<string, Type>, reporter: ErrorReporter): Type {
