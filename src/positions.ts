@@ -20,6 +20,10 @@ export function mergeSpan(a: Span, b: Span) {
     return { from: minPosition(a.from, b.from), to: maxPosition(a.to, b.to)};
 }
 
+export function isIn(position: Position, span: Span) {
+    return span.from.offset <= position.offset && position.offset <= span.to.offset;
+}
+
 export interface ErrorReporter {
     reportError(span: Span, message: string): void;
 }
