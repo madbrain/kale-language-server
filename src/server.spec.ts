@@ -5,7 +5,7 @@ import { expect } from 'chai';
 import { code } from './code-utils';
 
 import {
-    TextDocumentSyncKind, MarkupKind
+    TextDocumentSyncKind, MarkupKind, CompletionItemKind
 } from 'vscode-languageserver';
 
 const lspProcess = child_process.fork("lib/server.js", [ "--node-ipc" ]);
@@ -52,6 +52,7 @@ describe("Server Tests", function() {
 			
 			expect(json.id).to.equal(responseId);
 			expect(capabilities.textDocumentSync).to.equal(TextDocumentSyncKind.Incremental);
+			expect(capabilities.completionProvider).to.eql({});
 			
 			finished();
 		});
@@ -113,6 +114,45 @@ describe("Server Tests", function() {
 				});
 			}
 		});
+	});
+
+	it("open document and complete", function (finished) {
+		this.timeout(5000);
+		const uri = "uri://example1.kl";
+		const content = code('my_var := 10\nmy_second_var := "10"\nmy_other_var := my@{1}stic');
+		sendNotification("textDocument/didOpen", {
+			textDocument: {
+				languageId: "kale",
+				version: 1,
+				uri: uri,
+				text: content.value
+			}
+		});
+		const id = sendRequest("textDocument/completion", {
+			textDocument: {
+				uri
+			},
+			position: {
+				line: content.positions[1].line,
+				character: content.positions[1].character
+			}
+		});
+		const responseListener = (json: any) => {
+			if (json.id === id) {
+				expect(json.result).to.eql([
+					{ label: "my_second_var", kind: CompletionItemKind.Variable },
+					{ label: "my_var", kind: CompletionItemKind.Variable }
+				]);
+				lspProcess.removeListener("message", responseListener);
+				sendNotification("textDocument/didClose", {
+					textDocument: {
+						uri
+					}
+				});
+				finished();
+			}
+		};
+		lspProcess.on("message", responseListener);
 	});
 
 	after(() => {
