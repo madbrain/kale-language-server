@@ -8,6 +8,7 @@ import { Lexer } from "./lexer";
 import { checkSemantic } from "./semantic";
 import { Span, Position } from "./positions";
 import { complete } from "./complete";
+import { findCodeActions } from "./codeaction";
 
 const connection = createConnection(ProposedFeatures.all);
 
@@ -17,7 +18,8 @@ connection.onInitialize((params: InitializeParams): InitializeResult => {
 	return {
 		capabilities: {
 			textDocumentSync: TextDocumentSyncKind.Incremental,
-			completionProvider: {}
+			completionProvider: {},
+			codeActionProvider: true
 		} as any
 	}
 });
@@ -103,5 +105,46 @@ connection.onCompletion((textDocumentPosition: TextDocumentPositionParams): Comp
 		return { label: x.value, kind: CompletionItemKind.Variable };
 	});
 });
+
+connection.onCodeAction((codeActionParams: CodeActionParams): CodeAction[] => {
+	let document = documents[codeActionParams.textDocument.uri];
+	const startOffset = document.offsetAt(codeActionParams.range.start);
+	const endOffset = document.offsetAt(codeActionParams.range.end);
+	return findCodeActions(document.getText(), {
+		from: {
+			line: codeActionParams.range.start.line,
+			character: codeActionParams.range.start.character,
+			offset: startOffset
+		}, to: {
+			line: codeActionParams.range.end.line,
+			character: codeActionParams.range.end.character,
+			offset: endOffset
+		}
+	}).map(action => {
+		return {
+			title: action.title,
+			kind: CodeActionKind.QuickFix,
+			edit: {
+				changes: {
+					[codeActionParams.textDocument.uri]: [
+						{
+							range: {
+								start: {
+									line: action.span.from.line,
+									character: action.span.from.character,
+								},
+								end: {
+									line: action.span.to.line,
+									character: action.span.to.character,
+								}
+							},
+							newText: action.newText
+						}
+					]
+				}
+			}
+		};
+	})
+})
 
 connection.listen();
