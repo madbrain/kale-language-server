@@ -60,9 +60,19 @@ export interface Error {
     message: string;
 }
 
+export interface Hint {
+    span: Span;
+    message: string;
+    code: string;
+}
+
 export class TestErrorReporter implements ErrorReporter {
     errors: Error[] = [];
+    hints: Hint[] = [];
     reportError(span: Span, message: string): void {
         this.errors.push({ span, message });
+    }
+    reportHint(span: Span, message: string, code: string): void {
+        this.hints.push({ span, message, code });
     }
 }
