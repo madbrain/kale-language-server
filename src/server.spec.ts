@@ -5,7 +5,7 @@ import { expect } from 'chai';
 import { code } from './code-utils';
 
 import {
-    TextDocumentSyncKind, MarkupKind, CompletionItemKind
+    TextDocumentSyncKind, CompletionItemKind, DiagnosticSeverity, DiagnosticTag
 } from 'vscode-languageserver';
 
 const lspProcess = child_process.fork("lib/server.js", [ "--node-ipc" ]);
@@ -112,6 +112,39 @@ describe("Server Tests", function() {
 						finished();
 					}
 				});
+			}
+		});
+	});
+
+	it("open document and publish hint diagnostics", function (finished) {
+		this.timeout(5000);
+		const uri = "uri://example1.kl";
+		const content = code('@{1}my_var := 10@{2}\nmessage := "10"\n');
+		sendNotification("textDocument/didOpen", {
+			textDocument: {
+				languageId: "kale",
+				version: 1,
+				uri: uri,
+				text: content.value
+			}
+		});
+	
+		lspProcess.once("message", (json) => {
+			
+			if (json.method === "textDocument/publishDiagnostics") {
+				expect(json.params).to.eql({
+					uri: uri,
+					diagnostics: [
+						{
+							range: content.range(1, 2),
+							severity: DiagnosticSeverity.Hint,
+							tags: [ DiagnosticTag.Unnecessary ],
+							message: "Unused definition",
+							code: "0001"
+						}
+					]
+				});
+				finished();
 			}
 		});
 	});
