@@ -17,12 +17,16 @@ const inputFilename = args[0];
 
 class ConsoleErrorReporter implements ErrorReporter {
     errors: {span: Span, message: string}[] = [];
+    hints: {span: Span, message: string}[] = [];
     reportError(span: Span, message: string): void {
         this.errors.push({ span, message });
     }
+    reportHint(span: Span, message: string, code: string): void {
+        this.hints.push({ span, message });
+    }
     reportAll(content: string) {
         content.split('\n').forEach((line, i) => {
-            this.errors
+            this.errors.concat(this.hints)
                 .filter(error => error.span.from.line == i)
                 .forEach(error => {
                     let marker = this.repeat(' ', error.span.from.character);
@@ -53,9 +57,8 @@ fs.readFile(inputFilename, 'utf8', (err, data) => {
     const parser = new Parser(lexer, reporter);
     const result = parser.parseFile();
     checkSemantic(result, reporter);
-    if (reporter.errors.length > 0) {
-        reporter.reportAll(data);
-    } else {
+    reporter.reportAll(data);
+    if (reporter.errors.length == 0) {
         console.log(evaluate(result));
     }
 });

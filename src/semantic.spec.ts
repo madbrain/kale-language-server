@@ -4,7 +4,7 @@ import { expect } from 'chai';
 import { Parser } from './parser';
 import { Lexer } from './lexer';
 import { code, TestErrorReporter } from './code-utils';
-import { checkSemantic } from './semantic';
+import { checkSemantic, RefactoringAction } from './semantic';
 
 describe("Semantic Tests", function() {
 
@@ -99,4 +99,18 @@ describe("Semantic of bad value Tests", function() {
         expect(reporter.errors).to.eql([{span: content.span(1, 2), message: "Expecting STRING, got MULTIPLY" }]);
     });
 
+});
+
+describe("Semantic of refactoring", function() {
+
+    it("report hint on unused variables", function() {
+        const reporter = new TestErrorReporter();
+        const content = code('@{1}price := 10@{2}\nmessage := "hello"');
+        const parser = new Parser(new Lexer(content.value, reporter), reporter);
+        const result = parser.parseFile();
+
+        checkSemantic(result, reporter);
+
+        expect(reporter.hints).to.eql([{span: content.span(1, 2), message: "Unused definition", code: RefactoringAction.UNUSED_DEFINITION }]);
+    });
 });

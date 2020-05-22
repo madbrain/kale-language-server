@@ -24,6 +24,12 @@ export function isIn(position: Position, span: Span) {
     return span.from.offset <= position.offset && position.offset <= span.to.offset;
 }
 
+export function overlap(span: Span, other: Span) {
+    return isIn(span.from, other) || isIn(span.to, other)
+        || isIn(other.from, span) || isIn(other.to, span);
+}
+
 export interface ErrorReporter {
     reportError(span: Span, message: string): void;
+    reportHint(span: Span, message: string, code: string): void;
 }
