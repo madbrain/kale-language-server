@@ -5,7 +5,7 @@ import { expect } from 'chai';
 import { code } from './code-utils';
 
 import {
-    TextDocumentSyncKind, CompletionItemKind, DiagnosticSeverity, DiagnosticTag
+    TextDocumentSyncKind, CompletionItemKind, DiagnosticSeverity, DiagnosticTag, CodeActionKind
 } from 'vscode-languageserver';
 
 const lspProcess = child_process.fork("lib/server.js", [ "--node-ipc" ]);
@@ -53,6 +53,7 @@ describe("Server Tests", function() {
 			expect(json.id).to.equal(responseId);
 			expect(capabilities.textDocumentSync).to.equal(TextDocumentSyncKind.Incremental);
 			expect(capabilities.completionProvider).to.eql({});
+			expect(capabilities.codeActionProvider).to.eql(true);
 			
 			finished();
 		});
@@ -184,6 +185,57 @@ describe("Server Tests", function() {
 				});
 				finished();
 			}
+		};
+		lspProcess.on("message", responseListener);
+	});
+
+	it("open document and code action", function (finished) {
+		this.timeout(5000);
+		const uri = "uri://example1.kl";
+		const content = code('@{2}my_var@{1} := 10@{3}\nmessage := "10"\n');
+		sendNotification("textDocument/didOpen", {
+				textDocument: {
+						languageId: "kale",
+						version: 1,
+						uri: uri,
+						text: content.value
+				}
+		});
+		const id = sendRequest("textDocument/codeAction", {
+				textDocument: {
+						uri
+				},
+				range: content.range(1, 1),
+				context: {
+						diagnostics: []
+				}
+		});
+		const responseListener = (json: any) => {
+				if (json.id === id) {
+						expect(json.result).to.eql([
+								{
+										title: "Remove unused definition",
+										kind: CodeActionKind.QuickFix,
+										edit: {
+												changes: {
+														"uri://example1.kl": [
+																{
+																		range: content.range(2, 3),
+																		newText: ""
+																}
+														]
+												}
+										}
+								},
+						]);
+						lspProcess.removeListener("message", responseListener);
+						sendNotification("textDocument/didClose", {
+								textDocument: {
+										uri
+								}
+						});
+						finished();
+				}
 		};
 		lspProcess.on("message", responseListener);
 	});
