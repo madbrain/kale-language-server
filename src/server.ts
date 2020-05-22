@@ -1,5 +1,7 @@
 import { createConnection, ProposedFeatures, InitializeParams,
-	InitializeResult, TextDocumentSyncKind, DidOpenTextDocumentParams, TextDocument, Diagnostic, DiagnosticSeverity, DidChangeTextDocumentParams, DidCloseTextDocumentParams, TextDocumentPositionParams, CompletionItem, CompletionItemKind
+	InitializeResult, TextDocumentSyncKind, DidOpenTextDocumentParams, TextDocument, Diagnostic,
+	DiagnosticSeverity, DidChangeTextDocumentParams, DidCloseTextDocumentParams, TextDocumentPositionParams,
+	CompletionItem, CompletionItemKind, CodeActionParams, DiagnosticTag, CodeActionKind, CodeAction, TextEdit
 } from "vscode-languageserver";
 import { Parser } from "./parser";
 import { Lexer } from "./lexer";
@@ -71,7 +73,18 @@ function validateTextDocument(textDocument: TextDocument) {
 				},
 				severity: DiagnosticSeverity.Error,
 				message });
-		}
+		},
+		reportHint(span: Span, message: string, code: string) {
+			diagnostics.push({
+				range: {
+					start: toPosition(span.from),
+					end: toPosition(span.to)
+				},
+				severity: DiagnosticSeverity.Hint,
+				tags: [ DiagnosticTag.Unnecessary ],
+				code: code,
+				message });
+		},
 	}
 	const parser = new Parser(new Lexer(textDocument.getText(), reporter), reporter)
 	checkSemantic(parser.parseFile(), reporter);
