@@ -7,28 +7,45 @@ export enum Type {
     UNKNOWN,
 }
 
+export interface Definition {
+    span: Span;
+    type: Type;
+    isUsed: boolean;
+}
+
+export enum RefactoringAction {
+    UNUSED_DEFINITION = "0001"
+}
+
 export function checkSemantic(file: KaleFile, reporter: ErrorReporter) {
-    const variables = new Map<string, Type>();
+    const variables = new Map<string, Definition>();
     let lastSpan : Span = file.span;
     file.assignments.forEach(assignment => {
         lastSpan = checkAssignment(assignment, variables, reporter);
     });
     if (! variables.has('message')) {
-        reporter.reportError(lastSpan, "Missing 'message' variable")
+        reporter.reportError(lastSpan, "Missing 'message' variable");
     }
+    variables.forEach((definition, name) => {
+        if (! definition.isUsed && name != "message") {
+            reporter.reportHint(definition.span, "Unused definition", RefactoringAction.UNUSED_DEFINITION);
+        }
+    });
 }
 
-export function checkAssignment(assignment: Assignment, variables: Map<string, Type>, reporter: ErrorReporter) {
+export function checkAssignment(assignment: Assignment, variables: Map<string, Definition>, reporter: ErrorReporter) {
+    let type;
     if (assignment.isOk) {
         const assign = <CompleteAssignment>assignment;
-        variables.set(assign.variable.value, checkValue(assign.value, variables, reporter));
+        type = checkValue(assign.value, variables, reporter);
     } else {
-        variables.set((<Assignment>assignment).variable.value, Type.UNKNOWN);
+        type = Type.UNKNOWN;
     }
+    variables.set(assignment.variable.value, { span: assignment.span, type, isUsed: false });
     return assignment.span;
 }
 
-function checkValue(value: Value, variables: Map<string, Type>, reporter: ErrorReporter): Type {
+function checkValue(value: Value, variables: Map<string, Definition>, reporter: ErrorReporter): Type {
     if (value.type == ValueType.INTEGER) {
         return Type.INTEGER;
     }
@@ -38,7 +55,9 @@ function checkValue(value: Value, variables: Map<string, Type>, reporter: ErrorR
     if (value.type == ValueType.VARIABLE) {
         const name = (<SimpleValue>value).value;
         if (variables.has(name)) {
-            return variables.get(name)!;
+            const definition = variables.get(name)!;
+            definition.isUsed = true;
+            return definition.type;
         }
         reporter.reportError(value.span, `Unknown variable '${name}'`);
         return Type.UNKNOWN;
@@ -61,7 +80,7 @@ function checkValue(value: Value, variables: Map<string, Type>, reporter: ErrorR
     return Type.UNKNOWN;
 }
 
-function checkIntegerOperation(operation: BinaryOperation, op: string, variables: Map<string, Type>, reporter: ErrorReporter) {
+function checkIntegerOperation(operation: BinaryOperation, op: string, variables: Map<string, Definition>, reporter: ErrorReporter) {
     const lt = checkValue(operation.left, variables, reporter);
     if (!operation.isOk) {
         return Type.UNKNOWN;

@@ -2,10 +2,11 @@ import { Position, ErrorReporter, Span, isIn } from "./positions";
 import { Parser } from "./parser";
 import { Lexer } from "./lexer";
 import { CompleteAssignment, Assignment, Value, ValueType, SimpleValue, Operation, BinaryOperation, BadBinaryOperation, OperationType } from "./ast";
-import { Type, checkAssignment } from "./semantic";
+import { Type, checkAssignment, Definition } from "./semantic";
 
 const NULL_REPORTER: ErrorReporter = {
-    reportError(span: Span, message: string) { /* ignore */ }
+    reportError(span: Span, message: string) { /* ignore */ },
+    reportHint(span: Span, message: string) { /* ignore */ }
 }
 
 export interface Completion {
@@ -17,7 +18,7 @@ export function complete(content: string, position: Position): Completion[] {
     const result = parser.parseFile();
     const completions: Completion[] = [];
     let previousAssignment: Assignment | null = null;
-    const variables = new Map<string, Type>();
+    const variables = new Map<string, Definition>();
     result.assignments.forEach(assignment => {
         if (previousAssignment != null) {
             checkAssignment(previousAssignment, variables, NULL_REPORTER);
@@ -37,13 +38,13 @@ export function complete(content: string, position: Position): Completion[] {
     return completions;
 }
 
-function completeInValue(position: Position, value: Value, variables: Map<string, Type>, context: Type, completions: Completion[]) {
+function completeInValue(position: Position, value: Value, variables: Map<string, Definition>, context: Type, completions: Completion[]) {
     if (value.type == ValueType.VARIABLE) {
         const variableValue = <SimpleValue>value;
         const content = <string>variableValue.value;
         const prefix = content.substring(0, position.offset - value.span.from.offset);
-        variables.forEach((type, name) => {
-            if (name.startsWith(prefix) && (context == Type.UNKNOWN || type == context)) {
+        variables.forEach((definition, name) => {
+            if (name.startsWith(prefix) && (context == Type.UNKNOWN || definition.type == context)) {
                 completions.push({ value: name });
             }
         });
