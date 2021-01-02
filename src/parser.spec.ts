@@ -36,7 +36,7 @@ describe("Parser Tests", function() {
 
     it("parse multiple assignments", function() {
         const reporter = new TestErrorReporter();
-        const content = code('@{1}my_var@{2} := @{3}10@{4} @{5}my_other_var@{6} := @{7}"hello"@{8}');
+        const content = code('@{1}my_var@{2} := @{3}10@{4}\n @{5}my_other_var@{6} := @{7}"hello"@{8}');
         const parser = new Parser(new Lexer(content.value, reporter), reporter);
         const result = parser.parseFile();
         expect(result).to.eql({
@@ -226,7 +226,7 @@ describe("Parser Robustness Tests", function() {
                 value: { span: content.span(5, 6), type: 'integer', value: 30 }
             }
         ]});
-        expect(reporter.errors).to.eql([ { span: content.span(1, 2), message: "Expecting IDENT, got ADD" }]);
+        expect(reporter.errors).to.eql([ { span: content.span(1, 2), message: "Expecting START_IDENT, got ADD" }]);
     });
 
     it("parse bad add/sub operation", function() {
