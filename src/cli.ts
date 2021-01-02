@@ -49,7 +49,7 @@ fs.readFile(inputFilename, 'utf8', (err, data) => {
     if (err) throw err;
     const reporter = new ConsoleErrorReporter();
     const lexer = new Lexer(data, reporter);
-    const parser = new Parser(lexer);
+    const parser = new Parser(lexer, reporter);
     const result = parser.parseFile();
     if (reporter.errors.length > 0) {
         reporter.reportAll(data);
